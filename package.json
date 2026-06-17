@@ -1,0 +1,26 @@
+{
+  "name": "certidao-pendencias-interface",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interface de consulta de Situação Fiscal — 41 Tech",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "mysql2": "^3.11.0",
+    "next": "14.2.35",
+    "nodemailer": "^6.9.14",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/nodemailer": "^6.4.15",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.3"
+  }
+}
