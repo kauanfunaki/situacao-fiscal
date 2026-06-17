@@ -304,6 +304,47 @@ export async function ultimaVerificacao(): Promise<string | null> {
   return rows[0]?.ultima ?? null;
 }
 
+// ---------- CNPJs Monitorados ----------
+
+export type CnpjMonitorado = {
+  cnpj: string;
+  razao_social: string;
+  ativo: number;
+  atualizado_em: string;
+  situacao: string | null;
+  ultimo_relatorio_em: string | null;
+};
+
+export async function listarCnpjsMonitorados(): Promise<CnpjMonitorado[]> {
+  return query<CnpjMonitorado>(`
+    SELECT c.cnpj, c.razao_social, c.ativo, c.atualizado_em,
+           e.situacao, e.ultimo_relatorio_em
+    FROM cnpjs c
+    LEFT JOIN empresas e ON e.cnpj = c.cnpj
+    ORDER BY c.ativo DESC, c.razao_social ASC, c.cnpj ASC
+  `);
+}
+
+export async function adicionarCnpjMonitorado(cnpj: string, razaoSocial: string): Promise<void> {
+  await query(
+    `INSERT INTO cnpjs (cnpj, razao_social, ativo)
+     VALUES (:cnpj, :rs, 1)
+     ON DUPLICATE KEY UPDATE razao_social = IF(:rs != '', VALUES(razao_social), razao_social), ativo = 1`,
+    { cnpj: cnpj.replace(/\D/g, ""), rs: razaoSocial.trim() }
+  );
+}
+
+export async function removerCnpjMonitorado(cnpj: string): Promise<void> {
+  await query("DELETE FROM cnpjs WHERE cnpj = :cnpj", { cnpj });
+}
+
+export async function toggleCnpjMonitorado(cnpj: string, ativo: boolean): Promise<void> {
+  await query("UPDATE cnpjs SET ativo = :ativo WHERE cnpj = :cnpj", {
+    ativo: ativo ? 1 : 0,
+    cnpj,
+  });
+}
+
 export async function contagemPendentes(): Promise<number> {
   await ensureNotifTables();
   const rows = await query<{ total: number }>(
