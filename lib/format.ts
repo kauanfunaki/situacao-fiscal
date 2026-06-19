@@ -35,6 +35,7 @@ export const SITUACAO_LABEL: Record<string, string> = {
   positiva_efeito_negativa: "Positiva c/ Efeito de Negativa",
   positiva: "Com Pendência",
   indefinida: "Indefinida",
+  nao_apto: "CNPJ não apto",
 };
 
 export const SITUACAO_COR: Record<string, string> = {
@@ -42,6 +43,7 @@ export const SITUACAO_COR: Record<string, string> = {
   positiva_efeito_negativa: "badge-yellow",
   positiva: "badge-red",
   indefinida: "badge-gray",
+  nao_apto: "badge-purple",
 };
 
 // cor "crua" (var CSS) para pontos/realces fora do badge
@@ -50,4 +52,19 @@ export const SITUACAO_DOT: Record<string, string> = {
   positiva_efeito_negativa: "var(--yellow)",
   positiva: "var(--red)",
   indefinida: "var(--gray)",
+  nao_apto: "var(--purple)",
+};
+
+// Situação efetiva da empresa (sobrepõe "não apto" quando o perfil falhou)
+export function situacaoEfetiva(e: { situacao: string; apto?: number }): string {
+  return e.apto === 0 ? "nao_apto" : e.situacao;
+}
+
+// Status da certidão para exibição na coluna "Certidão"
+export type CertidaoStatus = "disponivel" | "indisponivel" | "erro_interno" | null | undefined;
+
+export const CERTIDAO_LABEL: Record<string, string> = {
+  disponivel: "PDF",
+  indisponivel: "Certidão Indisponível",
+  erro_interno: "Erro Interno",
 };

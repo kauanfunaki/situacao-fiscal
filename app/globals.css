@@ -42,6 +42,7 @@
   --yellow: #d97706; --yellow-bg: #fef3c7;
   --blue: #2563eb;   --blue-bg: #dbeafe;
   --gray: #6b7280;   --gray-bg: #f3f4f6;
+  --purple: #7c3aed; --purple-bg: #ede9fe;
 
   /* Layout */
   --sidebar-w: 228px;
@@ -76,6 +77,7 @@ html.dark {
   --yellow: #fbbf24; --yellow-bg: rgba(245, 158, 11, 0.12);
   --blue: #60a5fa;   --blue-bg: rgba(59, 130, 246, 0.12);
   --gray: #9ca3af;   --gray-bg: rgba(107, 114, 128, 0.12);
+  --purple: #a78bfa; --purple-bg: rgba(124, 58, 237, 0.16);
 }
 
 /* ─── Reset & Base ─── */
@@ -237,6 +239,14 @@ a {
   flex-direction: column;
   min-height: 100vh;
   min-width: 0;
+  /* Atmosfera sutil: leve brilho do acento no topo direito do conteúdo */
+  background:
+    radial-gradient(
+      110% 45% at 100% 0%,
+      color-mix(in srgb, var(--accent) 6%, transparent),
+      transparent 60%
+    ),
+    var(--bg);
 }
 .topbar {
   background: var(--surface);
@@ -334,24 +344,44 @@ h2.sec {
   margin-bottom: 22px;
 }
 .stat-card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px 18px;
-  transition: background var(--t), border-color var(--t);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: transform var(--t), box-shadow var(--t), border-color var(--t),
+    background var(--t);
+}
+/* Fina linha de acento no topo do card */
+.stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), transparent 75%);
+  opacity: 0.55;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-2);
 }
 .stat-card .num {
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 700;
   line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 .stat-card .lbl {
   color: var(--text-3);
-  font-size: 12px;
-  margin-top: 6px;
+  font-size: 11.5px;
+  margin-top: 8px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   font-weight: 600;
 }
 
@@ -360,6 +390,7 @@ h2.sec {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow);
   transition: background var(--t), border-color var(--t);
 }
 .card-header {
@@ -401,15 +432,18 @@ h2.sec {
   border-collapse: collapse;
 }
 .data-table th {
-  padding: 10px 14px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 11px 14px;
   text-align: center;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-3);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-2);
   white-space: nowrap;
 }
 .data-table td {
@@ -431,6 +465,7 @@ h2.sec {
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }
 .truncate {
   max-width: 280px;
@@ -461,6 +496,37 @@ h2.sec {
 .badge-yellow { background: var(--yellow-bg); color: var(--yellow); }
 .badge-blue   { background: var(--blue-bg);   color: var(--blue); }
 .badge-gray   { background: var(--gray-bg);   color: var(--gray); }
+.badge-purple { background: var(--purple-bg); color: var(--purple); }
+
+/* ─── Tags de status da certidão (coluna Certidão) ─── */
+.cert-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 5px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.cert-tag::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.85;
+}
+.cert-tag-gray {
+  background: var(--gray-bg);
+  color: var(--text-3);
+}
+.cert-tag-red {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: color-mix(in srgb, var(--red) 22%, transparent);
+}
 
 /* ─── Botões ─── */
 .btn {

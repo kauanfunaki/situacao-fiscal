@@ -1,13 +1,75 @@
 import Link from "next/link";
 import { listarEmpresas, resumoStatus } from "@/lib/db";
 import {
+  CERTIDAO_LABEL,
   formatCnpj,
   formatData,
   formatMoeda,
+  situacaoEfetiva,
   SITUACAO_COR,
   SITUACAO_DOT,
   SITUACAO_LABEL,
 } from "@/lib/format";
+
+function CertidaoCell({
+  cnpj,
+  apto,
+  status,
+  temCertidao,
+}: {
+  cnpj: string;
+  apto?: number;
+  status?: string | null;
+  temCertidao?: number;
+}) {
+  // CNPJ não apto → certidão "—"
+  if (apto === 0) return <span style={{ color: "var(--text-3)" }}>—</span>;
+
+  if (status === "disponivel" && temCertidao) {
+    return (
+      <a
+        href={`/api/certidao/${cnpj}`}
+        className="btn btn-secondary"
+        style={{
+          display: "inline-flex",
+          gap: 6,
+          alignItems: "center",
+          padding: "4px 10px",
+          fontSize: 12,
+        }}
+        title="Baixar certidão (PDF)"
+      >
+        <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+          />
+        </svg>
+        {CERTIDAO_LABEL.disponivel}
+      </a>
+    );
+  }
+
+  if (status === "indisponivel") {
+    return (
+      <span className="cert-tag cert-tag-gray" title="Receita: informações insuficientes para emitir">
+        {CERTIDAO_LABEL.indisponivel}
+      </span>
+    );
+  }
+
+  if (status === "erro_interno") {
+    return (
+      <span className="cert-tag cert-tag-red" title="Erro interno da Receita ao emitir — reprocessar">
+        {CERTIDAO_LABEL.erro_interno}
+      </span>
+    );
+  }
+
+  return <span style={{ color: "var(--text-3)" }}>—</span>;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +120,12 @@ export default async function Home({ searchParams }: Props) {
           </div>
           <div className="lbl">Com Pendência</div>
         </div>
+        <div className="stat-card">
+          <div className="num" style={{ color: "var(--purple)" }}>
+            {porSituacao("nao_apto")}
+          </div>
+          <div className="lbl">CNPJ não apto</div>
+        </div>
       </div>
 
       <form className="filtros" method="get">
@@ -74,6 +142,7 @@ export default async function Home({ searchParams }: Props) {
           <option value="positiva_efeito_negativa">Positiva c/ Efeito de Negativa</option>
           <option value="positiva">Com Pendência</option>
           <option value="indefinida">Indefinida</option>
+          <option value="nao_apto">CNPJ não apto</option>
         </select>
         <button type="submit" className="btn btn-primary">
           Filtrar
@@ -130,49 +199,29 @@ export default async function Home({ searchParams }: Props) {
                   </td>
                   <td>{e.razao_social || "—"}</td>
                   <td>
-                    <span className={`badge ${SITUACAO_COR[e.situacao] ?? "badge-gray"}`}>
-                      <span
-                        className="badge-dot"
-                        style={{ background: SITUACAO_DOT[e.situacao] ?? "var(--gray)" }}
-                      />
-                      {SITUACAO_LABEL[e.situacao] ?? e.situacao}
-                    </span>
+                    {(() => {
+                      const sit = situacaoEfetiva(e);
+                      return (
+                        <span className={`badge ${SITUACAO_COR[sit] ?? "badge-gray"}`}>
+                          <span
+                            className="badge-dot"
+                            style={{ background: SITUACAO_DOT[sit] ?? "var(--gray)" }}
+                          />
+                          {SITUACAO_LABEL[sit] ?? sit}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td>{e.qtd_debitos}</td>
                   <td className="mono">{formatMoeda(e.valor_total_saldo)}</td>
                   <td>{formatData(e.certidao_validade)}</td>
                   <td>
-                    {e.tem_certidao ? (
-                      <a
-                        href={`/api/certidao/${e.cnpj}`}
-                        className="btn btn-secondary"
-                        style={{
-                          display: "inline-flex",
-                          gap: 6,
-                          alignItems: "center",
-                          padding: "4px 10px",
-                          fontSize: 12,
-                        }}
-                        title="Baixar certidão (PDF)"
-                      >
-                        <svg
-                          style={{ width: 14, height: 14 }}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                          />
-                        </svg>
-                        PDF
-                      </a>
-                    ) : (
-                      <span style={{ color: "var(--text-3)" }}>—</span>
-                    )}
+                    <CertidaoCell
+                      cnpj={e.cnpj}
+                      apto={e.apto}
+                      status={e.certidao_status}
+                      temCertidao={e.tem_certidao}
+                    />
                   </td>
                 </tr>
               ))}

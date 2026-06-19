@@ -55,6 +55,8 @@ export type Empresa = {
   ultimo_relatorio_em: string | null;
   atualizado_em: string;
   tem_certidao?: number;
+  apto?: number; // 0 = CNPJ não apto (falhou ao trocar de perfil no e-CAC)
+  certidao_status?: string | null; // 'disponivel'|'indisponivel'|'erro_interno'|null
 };
 
 export type Debito = {
@@ -99,6 +101,7 @@ export type Relatorio = {
 
 export async function listarEmpresas(busca?: string, situacao?: string): Promise<Empresa[]> {
   await ensureCertidoesTable();
+  await ensureCnpjStatusTable();
   const where: string[] = [];
   const params: Record<string, any> = {};
   if (busca && busca.trim()) {
@@ -108,13 +111,21 @@ export async function listarEmpresas(busca?: string, situacao?: string): Promise
     if (!/^\d+$/.test(busca)) params.b = `%${busca}%`;
   }
   if (situacao && situacao !== "todas") {
-    where.push("e.situacao = :s");
-    params.s = situacao;
+    if (situacao === "nao_apto") {
+      where.push("COALESCE(s.apto, 1) = 0");
+    } else {
+      where.push("e.situacao = :s AND COALESCE(s.apto, 1) = 1");
+      params.s = situacao;
+    }
   }
   const sql = `
-    SELECT e.*, (c.cnpj IS NOT NULL) AS tem_certidao
+    SELECT e.*,
+           COALESCE(s.apto, 1) AS apto,
+           s.certidao_status   AS certidao_status,
+           (c.cnpj IS NOT NULL) AS tem_certidao
     FROM empresas e
-    LEFT JOIN certidoes c ON c.cnpj = e.cnpj
+    LEFT JOIN cnpj_status s ON s.cnpj = e.cnpj
+    LEFT JOIN certidoes  c ON c.cnpj = e.cnpj
     ${where.length ? "WHERE " + where.join(" AND ") : ""}
     ORDER BY e.tem_pendencia DESC, e.razao_social ASC
   `;
@@ -122,7 +133,19 @@ export async function listarEmpresas(busca?: string, situacao?: string): Promise
 }
 
 export async function obterEmpresa(cnpj: string): Promise<Empresa | null> {
-  const rows = await query<Empresa>("SELECT * FROM empresas WHERE cnpj = :c", { c: cnpj });
+  await ensureCertidoesTable();
+  await ensureCnpjStatusTable();
+  const rows = await query<Empresa>(
+    `SELECT e.*,
+            COALESCE(s.apto, 1) AS apto,
+            s.certidao_status   AS certidao_status,
+            (c.cnpj IS NOT NULL) AS tem_certidao
+     FROM empresas e
+     LEFT JOIN cnpj_status s ON s.cnpj = e.cnpj
+     LEFT JOIN certidoes  c ON c.cnpj = e.cnpj
+     WHERE e.cnpj = :c`,
+    { c: cnpj }
+  );
   return rows[0] ?? null;
 }
 
@@ -146,12 +169,21 @@ export async function sociosDoRelatorio(relatorioId: number): Promise<Socio[]> {
 }
 
 export async function resumoStatus(): Promise<{ situacao: string; total: number }[]> {
-  return query("SELECT situacao, COUNT(*) AS total FROM empresas GROUP BY situacao");
+  await ensureCnpjStatusTable();
+  // Situação efetiva: 'nao_apto' sobrepõe quando o CNPJ falhou ao trocar de perfil.
+  return query(`
+    SELECT IF(COALESCE(s.apto, 1) = 0, 'nao_apto', e.situacao) AS situacao,
+           COUNT(*) AS total
+    FROM empresas e
+    LEFT JOIN cnpj_status s ON s.cnpj = e.cnpj
+    GROUP BY IF(COALESCE(s.apto, 1) = 0, 'nao_apto', e.situacao)
+  `);
 }
 
 // ---------- Certidões (PDF) ----------
 
 let _certReady = false;
+let _statusReady = false;
 
 export async function ensureCertidoesTable(): Promise<void> {
   if (_certReady) return;
@@ -166,6 +198,20 @@ export async function ensureCertidoesTable(): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
   _certReady = true;
+}
+
+export async function ensureCnpjStatusTable(): Promise<void> {
+  if (_statusReady) return;
+  await query(`
+    CREATE TABLE IF NOT EXISTS cnpj_status (
+      cnpj            VARCHAR(14)  NOT NULL,
+      apto            TINYINT(1)   DEFAULT 1,
+      certidao_status VARCHAR(20)  DEFAULT NULL,
+      atualizado_em   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (cnpj)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  _statusReady = true;
 }
 
 export async function certidaoExiste(cnpj: string): Promise<boolean> {

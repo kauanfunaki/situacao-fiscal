@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  certidaoExiste,
   debitosDoRelatorio,
   obterEmpresa,
   sociosDoRelatorio,
   ultimoRelatorio,
 } from "@/lib/db";
 import {
+  CERTIDAO_LABEL,
   formatCnpj,
   formatCpfCnpj,
   formatData,
   formatDataHora,
   formatMoeda,
+  situacaoEfetiva,
   SITUACAO_COR,
   SITUACAO_DOT,
   SITUACAO_LABEL,
@@ -39,7 +40,9 @@ export default async function DetalheEmpresa({ params }: Props) {
   const relatorio = await ultimoRelatorio(cnpj);
   const debitos = relatorio ? await debitosDoRelatorio(relatorio.id) : [];
   const socios = relatorio ? await sociosDoRelatorio(relatorio.id) : [];
-  const temCertidao = await certidaoExiste(cnpj);
+
+  const sit = situacaoEfetiva(empresa);
+  const certStatus = empresa.apto === 0 ? null : empresa.certidao_status;
 
   const pendencias = debitos.filter((d) => d.categoria === "pendencia_debito");
   const suspensas = debitos.filter((d) => d.categoria === "exigibilidade_suspensa");
@@ -53,12 +56,12 @@ export default async function DetalheEmpresa({ params }: Props) {
       <h1 className="page-title">{empresa.razao_social || formatCnpj(empresa.cnpj)}</h1>
       <p className="page-sub" style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span className="mono">{formatCnpj(empresa.cnpj)}</span>
-        <span className={`badge ${SITUACAO_COR[empresa.situacao] ?? "badge-gray"}`}>
+        <span className={`badge ${SITUACAO_COR[sit] ?? "badge-gray"}`}>
           <span
             className="badge-dot"
-            style={{ background: SITUACAO_DOT[empresa.situacao] ?? "var(--gray)" }}
+            style={{ background: SITUACAO_DOT[sit] ?? "var(--gray)" }}
           />
-          {SITUACAO_LABEL[empresa.situacao] ?? empresa.situacao}
+          {SITUACAO_LABEL[sit] ?? sit}
         </span>
       </p>
 
@@ -91,19 +94,14 @@ export default async function DetalheEmpresa({ params }: Props) {
         <h2 className="sec" style={{ marginBottom: 0 }}>
           Certidão Emitida
         </h2>
-        {temCertidao ? (
+        {certStatus === "disponivel" && empresa.tem_certidao ? (
           <a
             href={`/api/certidao/${empresa.cnpj}`}
             className="btn btn-primary"
             style={{ display: "inline-flex", gap: 8, alignItems: "center" }}
             title="Baixar certidão (PDF)"
           >
-            <svg
-              style={{ width: 16, height: 16 }}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -113,9 +111,13 @@ export default async function DetalheEmpresa({ params }: Props) {
             </svg>
             Baixar Certidão (PDF)
           </a>
+        ) : certStatus === "indisponivel" ? (
+          <span className="cert-tag cert-tag-gray">{CERTIDAO_LABEL.indisponivel}</span>
+        ) : certStatus === "erro_interno" ? (
+          <span className="cert-tag cert-tag-red">{CERTIDAO_LABEL.erro_interno}</span>
         ) : (
           <span style={{ fontSize: 12.5, color: "var(--text-3)" }}>
-            Certidão PDF não disponível
+            Certidão não disponível
           </span>
         )}
       </div>
