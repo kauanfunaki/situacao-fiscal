@@ -152,9 +152,35 @@ export default async function Home({ searchParams }: Props) {
       <div className="card">
         <div className="card-header">
           <span className="card-title">Empresas</span>
-          <span className="card-count">
-            {empresas.length} resultado{empresas.length !== 1 ? "s" : ""}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span className="card-count">
+              {empresas.length} resultado{empresas.length !== 1 ? "s" : ""}
+            </span>
+            <a
+              href={`/api/empresas/export?${new URLSearchParams({
+                q: busca,
+                situacao,
+              }).toString()}`}
+              className="btn btn-secondary"
+              style={{ height: 30, padding: "0 12px", fontSize: 12.5 }}
+              title="Exportar a tabela para Excel (.xlsx)"
+            >
+              <svg
+                style={{ width: 14, height: 14 }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Exportar
+            </a>
+          </div>
         </div>
         <div className="tabela-wrap">
           <table className="data-table">
