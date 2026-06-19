@@ -97,12 +97,13 @@ export default async function Home({ searchParams }: Props) {
                 <th>Débitos</th>
                 <th>Saldo Devedor</th>
                 <th>Validade Certidão</th>
+                <th>Certidão</th>
               </tr>
             </thead>
             <tbody>
               {empresas.length === 0 && (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={7}>
                     <div className="empty-state">
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
@@ -140,6 +141,39 @@ export default async function Home({ searchParams }: Props) {
                   <td>{e.qtd_debitos}</td>
                   <td className="mono">{formatMoeda(e.valor_total_saldo)}</td>
                   <td>{formatData(e.certidao_validade)}</td>
+                  <td>
+                    {e.tem_certidao ? (
+                      <a
+                        href={`/api/certidao/${e.cnpj}`}
+                        className="btn btn-secondary"
+                        style={{
+                          display: "inline-flex",
+                          gap: 6,
+                          alignItems: "center",
+                          padding: "4px 10px",
+                          fontSize: 12,
+                        }}
+                        title="Baixar certidão (PDF)"
+                      >
+                        <svg
+                          style={{ width: 14, height: 14 }}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                          />
+                        </svg>
+                        PDF
+                      </a>
+                    ) : (
+                      <span style={{ color: "var(--text-3)" }}>—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

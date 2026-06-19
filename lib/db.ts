@@ -54,6 +54,7 @@ export type Empresa = {
   valor_total_saldo: string;
   ultimo_relatorio_em: string | null;
   atualizado_em: string;
+  tem_certidao?: number;
 };
 
 export type Debito = {
@@ -97,22 +98,25 @@ export type Relatorio = {
 // ---------- Queries ----------
 
 export async function listarEmpresas(busca?: string, situacao?: string): Promise<Empresa[]> {
+  await ensureCertidoesTable();
   const where: string[] = [];
   const params: Record<string, any> = {};
   if (busca && busca.trim()) {
-    where.push("(cnpj LIKE :b OR razao_social LIKE :b)");
+    where.push("(e.cnpj LIKE :b OR e.razao_social LIKE :b)");
     params.b = `%${busca.replace(/\D/g, "") || busca}%`;
     // permite buscar tanto por dígitos do CNPJ quanto por texto da razão social
     if (!/^\d+$/.test(busca)) params.b = `%${busca}%`;
   }
   if (situacao && situacao !== "todas") {
-    where.push("situacao = :s");
+    where.push("e.situacao = :s");
     params.s = situacao;
   }
   const sql = `
-    SELECT * FROM empresas
+    SELECT e.*, (c.cnpj IS NOT NULL) AS tem_certidao
+    FROM empresas e
+    LEFT JOIN certidoes c ON c.cnpj = e.cnpj
     ${where.length ? "WHERE " + where.join(" AND ") : ""}
-    ORDER BY tem_pendencia DESC, razao_social ASC
+    ORDER BY e.tem_pendencia DESC, e.razao_social ASC
   `;
   return query<Empresa>(sql, params);
 }
@@ -143,6 +147,46 @@ export async function sociosDoRelatorio(relatorioId: number): Promise<Socio[]> {
 
 export async function resumoStatus(): Promise<{ situacao: string; total: number }[]> {
   return query("SELECT situacao, COUNT(*) AS total FROM empresas GROUP BY situacao");
+}
+
+// ---------- Certidões (PDF) ----------
+
+let _certReady = false;
+
+export async function ensureCertidoesTable(): Promise<void> {
+  if (_certReady) return;
+  await query(`
+    CREATE TABLE IF NOT EXISTS certidoes (
+      cnpj       VARCHAR(14)  NOT NULL,
+      arquivo    VARCHAR(255) DEFAULT '',
+      pdf        LONGBLOB,
+      tamanho    INT          DEFAULT 0,
+      emitida_em TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (cnpj)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  _certReady = true;
+}
+
+export async function certidaoExiste(cnpj: string): Promise<boolean> {
+  await ensureCertidoesTable();
+  const rows = await query<{ cnpj: string }>(
+    "SELECT cnpj FROM certidoes WHERE cnpj = :c AND tamanho > 0",
+    { c: cnpj }
+  );
+  return rows.length > 0;
+}
+
+export async function obterCertidaoPdf(
+  cnpj: string
+): Promise<{ pdf: Buffer; arquivo: string } | null> {
+  await ensureCertidoesTable();
+  const rows = await query<{ pdf: Buffer; arquivo: string }>(
+    "SELECT pdf, arquivo FROM certidoes WHERE cnpj = :c AND tamanho > 0",
+    { c: cnpj }
+  );
+  if (rows.length === 0 || !rows[0].pdf) return null;
+  return { pdf: rows[0].pdf as Buffer, arquivo: rows[0].arquivo || `certidao_${cnpj}.pdf` };
 }
 
 // ---------- Execuções ----------

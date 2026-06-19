@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  certidaoExiste,
   debitosDoRelatorio,
   obterEmpresa,
   sociosDoRelatorio,
@@ -38,6 +39,7 @@ export default async function DetalheEmpresa({ params }: Props) {
   const relatorio = await ultimoRelatorio(cnpj);
   const debitos = relatorio ? await debitosDoRelatorio(relatorio.id) : [];
   const socios = relatorio ? await sociosDoRelatorio(relatorio.id) : [];
+  const temCertidao = await certidaoExiste(cnpj);
 
   const pendencias = debitos.filter((d) => d.categoria === "pendencia_debito");
   const suspensas = debitos.filter((d) => d.categoria === "exigibilidade_suspensa");
@@ -77,8 +79,47 @@ export default async function DetalheEmpresa({ params }: Props) {
         <Info k="Responsável" v={empresa.responsavel} />
       </div>
 
-      <h2 className="sec">Certidão Emitida</h2>
-      <div className="detalhe-grid">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <h2 className="sec" style={{ marginBottom: 0 }}>
+          Certidão Emitida
+        </h2>
+        {temCertidao ? (
+          <a
+            href={`/api/certidao/${empresa.cnpj}`}
+            className="btn btn-primary"
+            style={{ display: "inline-flex", gap: 8, alignItems: "center" }}
+            title="Baixar certidão (PDF)"
+          >
+            <svg
+              style={{ width: 16, height: 16 }}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
+            Baixar Certidão (PDF)
+          </a>
+        ) : (
+          <span style={{ fontSize: 12.5, color: "var(--text-3)" }}>
+            Certidão PDF não disponível
+          </span>
+        )}
+      </div>
+      <div className="detalhe-grid" style={{ marginTop: 12 }}>
         <Info k="Tipo de Certidão" v={empresa.tipo_certidao} />
         <Info k="Código" v={relatorio?.codigo_certidao} />
         <Info k="Emissão" v={formatData(relatorio?.certidao_emissao)} />
