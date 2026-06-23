@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listarEmpresas, resumoStatus } from "@/lib/db";
+import { listarDivergencias, listarEmpresas, resumoStatus } from "@/lib/db";
 import {
   CERTIDAO_LABEL,
   formatCnpj,
@@ -60,6 +60,17 @@ function CertidaoCell({
     );
   }
 
+  if (status === "exige_matriz") {
+    return (
+      <span
+        className="cert-tag cert-tag-amber"
+        title="CNPJ é filial — a certidão deve ser emitida pelo CNPJ da matriz"
+      >
+        {CERTIDAO_LABEL.exige_matriz}
+      </span>
+    );
+  }
+
   if (status === "erro_interno") {
     return (
       <span className="cert-tag cert-tag-red" title="Erro interno da Receita ao emitir — reprocessar">
@@ -81,10 +92,12 @@ export default async function Home({ searchParams }: Props) {
   const busca = searchParams.q ?? "";
   const situacao = searchParams.situacao ?? "todas";
 
-  const [empresas, resumo] = await Promise.all([
+  const [empresas, resumo, divs] = await Promise.all([
     listarEmpresas(busca, situacao),
     resumoStatus(),
+    listarDivergencias(),
   ]);
+  const cnpjsComDivergencia = new Set(divs.map((d) => d.cnpj));
 
   const total = resumo.reduce((acc, r) => acc + Number(r.total), 0);
   const porSituacao = (s: string) =>
@@ -125,6 +138,12 @@ export default async function Home({ searchParams }: Props) {
             {porSituacao("nao_apto")}
           </div>
           <div className="lbl">CNPJ não apto</div>
+        </div>
+        <div className="stat-card">
+          <div className="num" style={{ color: "var(--yellow)" }}>
+            {divs.length}
+          </div>
+          <div className="lbl">Com Divergências</div>
         </div>
       </div>
 
@@ -217,11 +236,24 @@ export default async function Home({ searchParams }: Props) {
               {empresas.map((e) => (
                 <tr key={e.cnpj}>
                   <td>
-                    <Link href={`/cnpj/${e.cnpj}`}>
-                      <span className="mono" style={{ color: "var(--accent)" }}>
-                        {formatCnpj(e.cnpj)}
-                      </span>
-                    </Link>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <Link href={`/cnpj/${e.cnpj}`}>
+                        <span className="mono" style={{ color: "var(--accent)" }}>
+                          {formatCnpj(e.cnpj)}
+                        </span>
+                      </Link>
+                      {cnpjsComDivergencia.has(e.cnpj) && (
+                        <span
+                          className="divergencia-badge"
+                          title="Dados divergentes sinalizados"
+                        >
+                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                        </span>
+                      )}
+                    </span>
                   </td>
                   <td>{e.razao_social || "—"}</td>
                   <td>

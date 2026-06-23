@@ -61,10 +61,17 @@ export function situacaoEfetiva(e: { situacao: string; apto?: number }): string 
 }
 
 // Status da certidão para exibição na coluna "Certidão"
-export type CertidaoStatus = "disponivel" | "indisponivel" | "erro_interno" | null | undefined;
+export type CertidaoStatus =
+  | "disponivel"
+  | "indisponivel"
+  | "exige_matriz"
+  | "erro_interno"
+  | null
+  | undefined;
 
 export const CERTIDAO_LABEL: Record<string, string> = {
   disponivel: "PDF",
   indisponivel: "Certidão Indisponível",
+  exige_matriz: "Emitir pela Matriz",
   erro_interno: "Erro Interno",
 };

@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   debitosDoRelatorio,
+  obterDivergencia,
   obterEmpresa,
   sociosDoRelatorio,
   ultimoRelatorio,
 } from "@/lib/db";
+import DivergenciaWidget from "./DivergenciaWidget";
 import {
   CERTIDAO_LABEL,
   formatCnpj,
@@ -34,10 +36,13 @@ function Info({ k, v }: { k: string; v: React.ReactNode }) {
 
 export default async function DetalheEmpresa({ params }: Props) {
   const cnpj = (params.cnpj || "").replace(/\D/g, "");
-  const empresa = await obterEmpresa(cnpj);
+  const [empresa, relatorio, divergencia] = await Promise.all([
+    obterEmpresa(cnpj),
+    ultimoRelatorio(cnpj),
+    obterDivergencia(cnpj),
+  ]);
   if (!empresa) notFound();
 
-  const relatorio = await ultimoRelatorio(cnpj);
   const debitos = relatorio ? await debitosDoRelatorio(relatorio.id) : [];
   const socios = relatorio ? await sociosDoRelatorio(relatorio.id) : [];
 
@@ -64,6 +69,13 @@ export default async function DetalheEmpresa({ params }: Props) {
           {SITUACAO_LABEL[sit] ?? sit}
         </span>
       </p>
+
+      <div style={{ margin: "16px 0" }}>
+        <DivergenciaWidget
+          cnpj={cnpj}
+          inicial={divergencia ? { descricao: divergencia.descricao, criado_em: String(divergencia.criado_em) } : null}
+        />
+      </div>
 
       <h2 className="sec">Dados Cadastrais</h2>
       <div className="detalhe-grid">
@@ -113,6 +125,13 @@ export default async function DetalheEmpresa({ params }: Props) {
           </a>
         ) : certStatus === "indisponivel" ? (
           <span className="cert-tag cert-tag-gray">{CERTIDAO_LABEL.indisponivel}</span>
+        ) : certStatus === "exige_matriz" ? (
+          <span
+            className="cert-tag cert-tag-amber"
+            title="CNPJ é filial — a certidão deve ser emitida pelo CNPJ da matriz"
+          >
+            {CERTIDAO_LABEL.exige_matriz}
+          </span>
         ) : certStatus === "erro_interno" ? (
           <span className="cert-tag cert-tag-red">{CERTIDAO_LABEL.erro_interno}</span>
         ) : (

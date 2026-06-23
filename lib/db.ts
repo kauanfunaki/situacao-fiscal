@@ -442,3 +442,65 @@ export async function contagemPendentes(): Promise<number> {
   );
   return Number(rows[0]?.total ?? 0);
 }
+
+// ---------- Divergências ----------
+
+export type Divergencia = {
+  cnpj: string;
+  descricao: string;
+  criado_em: string;
+};
+
+export type DivergenciaComEmpresa = Divergencia & {
+  razao_social: string | null;
+};
+
+let _divReady = false;
+
+export async function ensureDivergenciasTable(): Promise<void> {
+  if (_divReady) return;
+  await query(`
+    CREATE TABLE IF NOT EXISTS divergencias (
+      cnpj        VARCHAR(14)  NOT NULL,
+      descricao   TEXT         NOT NULL DEFAULT '',
+      criado_em   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (cnpj)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  _divReady = true;
+}
+
+export async function obterDivergencia(cnpj: string): Promise<Divergencia | null> {
+  await ensureDivergenciasTable();
+  const rows = await query<Divergencia>(
+    "SELECT cnpj, descricao, criado_em FROM divergencias WHERE cnpj = :c",
+    { c: cnpj }
+  );
+  return rows[0] ?? null;
+}
+
+export async function salvarDivergencia(cnpj: string, descricao: string): Promise<Divergencia> {
+  await ensureDivergenciasTable();
+  await query(
+    `INSERT INTO divergencias (cnpj, descricao)
+     VALUES (:cnpj, :desc)
+     ON DUPLICATE KEY UPDATE descricao = VALUES(descricao)`,
+    { cnpj, desc: descricao.trim() }
+  );
+  return (await obterDivergencia(cnpj))!;
+}
+
+export async function removerDivergencia(cnpj: string): Promise<void> {
+  await ensureDivergenciasTable();
+  await query("DELETE FROM divergencias WHERE cnpj = :c", { c: cnpj });
+}
+
+export async function listarDivergencias(): Promise<DivergenciaComEmpresa[]> {
+  await ensureDivergenciasTable();
+  return query<DivergenciaComEmpresa>(`
+    SELECT d.cnpj, d.descricao, d.criado_em, e.razao_social
+    FROM divergencias d
+    LEFT JOIN empresas e ON e.cnpj = d.cnpj
+    ORDER BY d.criado_em DESC
+  `);
+}

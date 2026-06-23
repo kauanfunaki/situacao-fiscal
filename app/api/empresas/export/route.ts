@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 const CERT_EXPORT: Record<string, string> = {
   disponivel: "Disponível",
   indisponivel: "Indisponível",
+  exige_matriz: "Emitir pela Matriz",
   erro_interno: "Erro Interno",
 };
 

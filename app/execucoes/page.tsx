@@ -19,6 +19,7 @@ function StatusBadge({ status }: { status: string }) {
     concluido: { cls: "badge-green", cor: "var(--green)", label: "Concluído" },
     parcial: { cls: "badge-yellow", cor: "var(--yellow)", label: "Parcial" },
     em_andamento: { cls: "badge-blue", cor: "var(--blue)", label: "Em andamento", pulse: true },
+    interrompido: { cls: "badge-gray", cor: "var(--gray)", label: "Interrompido" },
     erro: { cls: "badge-red", cor: "var(--red)", label: "Erro" },
   };
   const m = map[status] ?? { cls: "badge-gray", cor: "var(--gray)", label: status };
