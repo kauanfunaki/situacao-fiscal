@@ -16,12 +16,25 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!descricao) {
     return NextResponse.json({ error: "Descrição obrigatória" }, { status: 400 });
   }
-  const div = await salvarDivergencia(cnpj, descricao);
-  return NextResponse.json(div);
+  try {
+    const div = await salvarDivergencia(cnpj, descricao);
+    return NextResponse.json(div);
+  } catch (e) {
+    console.error("salvarDivergencia falhou:", e);
+    return NextResponse.json(
+      { error: "Não foi possível salvar a divergência. Verifique o banco de dados." },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const cnpj = params.cnpj.replace(/\D/g, "");
-  await removerDivergencia(cnpj);
-  return NextResponse.json({ ok: true });
+  try {
+    await removerDivergencia(cnpj);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("removerDivergencia falhou:", e);
+    return NextResponse.json({ error: "Não foi possível remover." }, { status: 500 });
+  }
 }

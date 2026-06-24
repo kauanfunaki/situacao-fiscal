@@ -462,7 +462,7 @@ export async function ensureDivergenciasTable(): Promise<void> {
   await query(`
     CREATE TABLE IF NOT EXISTS divergencias (
       cnpj        VARCHAR(14)  NOT NULL,
-      descricao   TEXT         NOT NULL DEFAULT '',
+      descricao   TEXT         NOT NULL,
       criado_em   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (cnpj)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -471,12 +471,19 @@ export async function ensureDivergenciasTable(): Promise<void> {
 }
 
 export async function obterDivergencia(cnpj: string): Promise<Divergencia | null> {
-  await ensureDivergenciasTable();
-  const rows = await query<Divergencia>(
-    "SELECT cnpj, descricao, criado_em FROM divergencias WHERE cnpj = :c",
-    { c: cnpj }
-  );
-  return rows[0] ?? null;
+  // Leitura resiliente: se a tabela falhar (ex.: sem privilégio de CREATE no
+  // ambiente, versão de MySQL antiga), não derruba a página — apenas omite.
+  try {
+    await ensureDivergenciasTable();
+    const rows = await query<Divergencia>(
+      "SELECT cnpj, descricao, criado_em FROM divergencias WHERE cnpj = :c",
+      { c: cnpj }
+    );
+    return rows[0] ?? null;
+  } catch (e) {
+    console.error("obterDivergencia falhou:", e);
+    return null;
+  }
 }
 
 export async function salvarDivergencia(cnpj: string, descricao: string): Promise<Divergencia> {
@@ -496,11 +503,17 @@ export async function removerDivergencia(cnpj: string): Promise<void> {
 }
 
 export async function listarDivergencias(): Promise<DivergenciaComEmpresa[]> {
-  await ensureDivergenciasTable();
-  return query<DivergenciaComEmpresa>(`
-    SELECT d.cnpj, d.descricao, d.criado_em, e.razao_social
-    FROM divergencias d
-    LEFT JOIN empresas e ON e.cnpj = d.cnpj
-    ORDER BY d.criado_em DESC
-  `);
+  // Leitura resiliente: nunca derruba a home/listagens por causa desta feature.
+  try {
+    await ensureDivergenciasTable();
+    return await query<DivergenciaComEmpresa>(`
+      SELECT d.cnpj, d.descricao, d.criado_em, e.razao_social
+      FROM divergencias d
+      LEFT JOIN empresas e ON e.cnpj = d.cnpj
+      ORDER BY d.criado_em DESC
+    `);
+  } catch (e) {
+    console.error("listarDivergencias falhou:", e);
+    return [];
+  }
 }
